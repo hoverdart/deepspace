@@ -156,6 +156,8 @@ html[data-theme='paper'] {
 .mc-join > summary::-webkit-details-marker { display: none; }
 .mc-join-form { margin-top: .75rem; max-width: 100%; }
 .mc-join-form .mc-button { white-space: nowrap; }
+.mc-invite-error:not(:target):not([data-invalid]) { display: none; }
+.mc-invite-error { margin-top: .45rem; }
 .mc-join-form .mc-actions { margin-top: .35rem; }
 .mc-join-form input { flex: 1; }
 .mc-preview, .mc-source {

@@ -30,6 +30,7 @@ import {
   resolveAuth,
 } from './src/server/http-routes.js'
 import { registerRealtimeRoutes } from './src/server/realtime-routes.js'
+import { roomIdSchema } from './src/mergecourt/validation.js'
 import { createRoomRecords } from './src/server/mergecourt-records.js'
 import { executeRoomCall, type RoomCall } from './src/server/mergecourt-workflow.js'
 
@@ -167,6 +168,12 @@ app.use('*', async (c, next) => {
 // Registration order is part of the worker contract. The wildcard auth route
 // follows its special cases, AI precedes platform proxies, and static is last.
 app.post('/internal/mergecourt', (c) => c.notFound())
+app.get('/join', (c) => {
+  const input = (c.req.query('invite') ?? '').trim()
+  const id = input.match(/(?:^|\/)rooms\/([^/?#]+)\/?(?:[?#].*)?$/)?.[1] ?? input
+  const result = roomIdSchema.safeParse(id)
+  return c.redirect(result.success ? `/rooms/${result.data.toLowerCase()}` : '/#invalid-invite', 303)
+})
 registerAuthAndIntegrationRoutes(app)
 registerRealtimeRoutes(app)
 registerActionRoutes(app, resolveAuth)

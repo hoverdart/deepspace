@@ -8,6 +8,20 @@ test('room actions require a signed-in caller; private endpoints stay internal',
   expect((await request.post('/api/tools/execute', { headers: { 'X-App-Action': 'true' }, data: {} })).status()).toBe(404)
 })
 
+test('the native invite form redirects only to MergeCourt rooms', async ({ request }) => {
+  const roomId = crypto.randomUUID()
+  const valid = await request.get('/join', {
+    params: { invite: `https://mergecourt.example/rooms/${roomId}/?source=invite` }, maxRedirects: 0,
+  })
+  expect(valid.status()).toBe(303)
+  expect(valid.headers().location).toBe(`/rooms/${roomId}`)
+  const invalid = await request.get('/join', {
+    params: { invite: 'https://mergecourt.example/unrelated' }, maxRedirects: 0,
+  })
+  expect(invalid.status()).toBe(303)
+  expect(invalid.headers().location).toBe('/#invalid-invite')
+})
+
 test('membership, phases, review locks and votes are enforced on the server', async ({ users }) => {
   const [alice, bob, observer] = await users(3)
   const [host, guest, outsider] = [alice.page, bob.page, observer.page]

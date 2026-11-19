@@ -26,6 +26,6 @@ I built MergeCourt for two developers to review the same pull request. Each pers
 
 The main tradeoff was keeping the game to two people and authored code so I could focus on making the shared reveal work correctly. DeepSpace Auth handles sign-in, RecordRoom persists and broadcasts authorized data, PresenceRoom shows who’s online, and server actions enforce the review phases. An optional AI opinion is available after reveal in rooms I host as the app owner.
 
-Codex implemented the app and ran the verification. I used Claude Code to review the plan, the room permissions and state transitions, and the AI request boundary.
+Codex implemented the app and ran the verification, with Claude CLI reviews of the plan, room permissions, state transitions, and AI request boundary. The automated checks covered the two-user workflow and rejected access attempts. A single live AI request produced three cards that stayed visible after the room closed and refreshed.
 
 Before submission, add your own verification details after stepping through the deployed flow in two signed-in sessions, checking a rejected request and the Worker logs, and tracing a reveal from the action to the browser.

@@ -47,7 +47,7 @@ test.describe('Smoke tests', () => {
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
   })
 
-  test('invalid invite stays on the landing page with an explanation', async ({ page }) => {
+  test('the native invite form explains invalid links', async ({ page }) => {
     await page.goto('/')
     await page.locator('summary').filter({ hasText: 'Join via link' }).click()
     await page.getByRole('textbox', { name: 'Invitation link or room ID' }).fill('wrong link')

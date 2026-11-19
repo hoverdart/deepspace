@@ -1,6 +1,7 @@
+import type { Page } from '@playwright/test'
 import { test, expect, loadAllTestAccounts } from 'deepspace/testing'
 
-test('two reviewers join live, keep findings private, reveal, vote, and reopen results', async ({ users }) => {
+test('two reviewers join live, keep findings private, reveal, vote, and reopen results', async ({ users, browser, baseURL }) => {
   const [alice, bob] = await users(2)
   const host = alice.page
   const guest = bob.page
@@ -60,17 +61,32 @@ test('two reviewers join live, keep findings private, reveal, vote, and reopen r
   }
   const account = loadAllTestAccounts().find(({ email }) => email === bob.email)
   if (!account) throw new Error('The reviewer test account is missing.')
-  await guest.getByRole('button', { name: 'Sign out' }).click()
-  await expect(guest.getByTestId('static-landing')).toBeVisible()
-  await guest.goto(invite)
-  await expect(guest.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
-  await guest.getByRole('button', { name: 'Sign in', exact: true }).click()
-  const overlay = guest.getByTestId('auth-overlay')
+  // Use a fresh auth session here so sign-out does not revoke cookies
+  // shared with concurrent tests through the SDK's fixture cache.
+  const independent = await browser.newContext({ baseURL })
+  try {
+    const returning = await independent.newPage()
+    await returning.goto(invite)
+    await signIn(returning, account)
+    await expect(returning.getByRole('heading', { name: 'Review results' })).toBeVisible()
+    await returning.getByRole('button', { name: 'Sign out' }).click()
+    await expect(returning.getByTestId('static-landing')).toBeVisible()
+    await returning.goto(invite)
+    await signIn(returning, account)
+    await expect(returning.getByRole('heading', { name: 'Review results' })).toBeVisible()
+  } finally {
+    await independent.close()
+  }
+  expect(await guest.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+  expect(errors).toEqual([])
+})
+
+async function signIn(page: Page, account: { email: string; password: string }) {
+  await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  const overlay = page.getByTestId('auth-overlay')
   await overlay.getByRole('button', { name: 'Sign in with email' }).click()
   await overlay.getByPlaceholder('Email', { exact: true }).fill(account.email)
   await overlay.getByPlaceholder('Password', { exact: true }).fill(account.password)
   await overlay.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(guest.getByRole('heading', { name: 'Review results' })).toBeVisible()
-  expect(await guest.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
-  expect(errors).toEqual([])
-})
+}

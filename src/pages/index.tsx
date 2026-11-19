@@ -1,9 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useSyncExternalStore } from 'react'
 import { ArrowRight, FileCode2, Link2, LockKeyhole, ScanLine, Vote } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Seo } from '../components/Seo'
 import { Wordmark } from '../mergecourt/brand'
-import { roomIdSchema } from '../mergecourt/validation'
 import { seo } from '../seo'
 
 const steps = [
@@ -12,21 +11,12 @@ const steps = [
   { title: 'Cast your verdict', copy: 'Vote on each finding and see where your judgments agree.', icon: Vote },
 ]
 
-export default function Landing() {
-  const navigate = useNavigate()
-  const [invitation, setInvitation] = useState('')
-  const [error, setError] = useState('')
+const subscribeToHydration = () => () => {}
 
-  function openInvitation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const value = invitation.trim().replace(/\/$/, '')
-    const roomId = roomIdSchema.safeParse(value.match(/\/rooms\/([^/?#]+)(?:[?#].*)?$/)?.[1] ?? value)
-    if (!roomId.success) {
-      setError('Enter a MergeCourt invitation link or room ID.')
-      return
-    }
-    void navigate(`/rooms/${roomId.data}`)
-  }
+export default function Landing() {
+  const { hash } = useLocation()
+  const hydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false)
+  const invalidInvite = hydrated && hash === '#invalid-invite'
 
   return (
     <>
@@ -48,18 +38,18 @@ export default function Landing() {
               </p>
               <div className="mc-actions">
                 <Link className="mc-button mc-primary" to="/rooms/new">Start review <ArrowRight aria-hidden="true" size={19} /></Link>
-                <details className="mc-join" suppressHydrationWarning>
+                <details className="mc-join" open={invalidInvite || undefined} suppressHydrationWarning>
                   <summary className="mc-button"><Link2 aria-hidden="true" size={18} /> Join via link</summary>
-                  <form className="mc-join-form" onSubmit={openInvitation}>
+                  <form className="mc-join-form" method="get" action="/join">
                     <label htmlFor="invite">Invitation link or room ID</label>
                     <div className="mc-actions">
-                      <input id="invite" value={invitation} onChange={(event) => setInvitation(event.target.value)} required />
+                      <input id="invite" name="invite" maxLength={2048} required />
                       <button className="mc-button mc-primary" type="submit">Open room</button>
                     </div>
-                    {error && <p className="mc-error" role="alert">{error}</p>}
                   </form>
                 </details>
               </div>
+              <p className="mc-error mc-invite-error" id="invalid-invite" data-invalid={invalidInvite || undefined} role="alert">Enter a MergeCourt invitation link or room ID.</p>
             </div>
             <div className="mc-preview" aria-label="Example of a line-anchored code review">
               <div className="mc-preview-header">
