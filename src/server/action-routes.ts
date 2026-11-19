@@ -133,6 +133,7 @@ function createActionTools(env: Env, userId: string, callerJwt: string): ActionT
       method: 'POST',
       headers,
       body: JSON.stringify(data ?? {}),
+      signal: AbortSignal.timeout(15_000),
     })
     const payload = (await res.json()) as Record<string, unknown>
     if (!res.ok || payload.success === false) {

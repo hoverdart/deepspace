@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { expect } from 'deepspace/testing'
 
@@ -23,16 +24,19 @@ export function sampleFinding(title: string, lineStart = 14) {
   }
 }
 
-export async function recordSubscription(page: Page, collection: string, where: object, token?: string) {
+export async function recordSubscription(page: Page, collection: string, where: object, token?: string, expectedRole?: string) {
   // Give this independent connection the same app scope as the real SDK socket.
   const auth = token ?? await getToken(page)
-  const appId = process.env.MERGECOURT_TEST_APP_ID ?? 'app_01M7SCCK5KAHBC32DQTGM0BAY6'
-  return page.evaluate(async ({ appId, auth, collection, where }) => {
+  const config = readFileSync(new URL('../../wrangler.toml', import.meta.url), 'utf8')
+  const appId = process.env.MERGECOURT_TEST_APP_ID ?? config.match(/DEEPSPACE_APP_ID = "([^"]+)"/)?.[1]
+  if (!appId) throw new Error('No test app ID configured')
+  const result = await page.evaluate(async ({ appId, auth, collection, where }) => {
     const url = new URL(`/ws/app:${appId}`, location.href)
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     url.searchParams.set('token', auth)
     const socket = new WebSocket(url)
-    return new Promise<unknown[]>((resolve, reject) => {
+    return new Promise<{ records: unknown[]; role?: string }>((resolve, reject) => {
+      let role: string | undefined
       const timer = setTimeout(() => {
         socket.close()
         reject(new Error('No record subscription result'))
@@ -43,10 +47,11 @@ export async function recordSubscription(page: Page, collection: string, where: 
       }))
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data)
+        if (message.type === 'user.info') role = message.payload.role
         if (message.type !== 'core.query_result' || message.payload.subscriptionId !== 'privacy-check') return
         clearTimeout(timer)
         socket.close()
-        resolve(message.payload.records)
+        resolve({ records: message.payload.records, role })
       }
       socket.onerror = () => {
         clearTimeout(timer)
@@ -54,4 +59,6 @@ export async function recordSubscription(page: Page, collection: string, where: 
       }
     })
   }, { appId, auth, collection, where })
+  if (expectedRole) expect(result.role).toBe(expectedRole)
+  return result.records
 }

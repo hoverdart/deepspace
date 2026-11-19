@@ -1,4 +1,4 @@
-import { test, expect } from 'deepspace/testing'
+import { test, expect, loadAllTestAccounts } from 'deepspace/testing'
 
 test('two reviewers join live, keep findings private, reveal, vote, and reopen results', async ({ users }) => {
   const [alice, bob] = await users(2)
@@ -58,6 +58,19 @@ test('two reviewers join live, keep findings private, reveal, vote, and reopen r
     await expect(page.getByText('1 settled', { exact: true })).toBeVisible()
     await expect(page.getByText('1 unresolved', { exact: true })).toBeVisible()
   }
+  const account = loadAllTestAccounts().find(({ email }) => email === bob.email)
+  if (!account) throw new Error('The reviewer test account is missing.')
+  await guest.getByRole('button', { name: 'Sign out' }).click()
+  await expect(guest.getByTestId('static-landing')).toBeVisible()
+  await guest.goto(invite)
+  await expect(guest.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+  await guest.getByRole('button', { name: 'Sign in', exact: true }).click()
+  const overlay = guest.getByTestId('auth-overlay')
+  await overlay.getByRole('button', { name: 'Sign in with email' }).click()
+  await overlay.getByPlaceholder('Email', { exact: true }).fill(account.email)
+  await overlay.getByPlaceholder('Password', { exact: true }).fill(account.password)
+  await overlay.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(guest.getByRole('heading', { name: 'Review results' })).toBeVisible()
   expect(await guest.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   expect(errors).toEqual([])
 })

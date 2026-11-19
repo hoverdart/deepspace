@@ -5,12 +5,9 @@ import type { Challenge } from './challenges'
 import { roomAction, useRoomAction } from './client'
 import { FindingDetails } from './review-desk'
 import { SourceView } from './source-view'
-import { verdictChoices, type Finding, type Session, type Verdict, type Vote } from './types'
+import { isSettled, verdictChoices, type Finding, type Session, type Verdict, type Vote } from './types'
+import { AiOpinion } from './ai-opinion'
 import { useRoomRead } from './use-room-read'
-
-export function isSettled(votes: Pick<Vote, 'verdict'>[]) {
-  return votes.length === 2 && votes[0].verdict === votes[1].verdict && votes[0].verdict !== 'needs_context'
-}
 
 export function VerdictDesk({ roomId, session, challenge, userId, host }: {
   roomId: string
@@ -63,6 +60,7 @@ export function VerdictDesk({ roomId, session, challenge, userId, host }: {
             </div>
           )}
         </section>
+        <AiOpinion roomId={roomId} closed={closed} host={host} />
         {closed && (
           <section className="mc-panel" aria-labelledby="reference-guide-heading">
             <h2 id="reference-guide-heading">Reference guide</h2>

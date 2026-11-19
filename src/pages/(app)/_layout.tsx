@@ -32,7 +32,10 @@ function Account() {
   return (
     <div className="mc-account">
       <span>{user?.fullName}</span>
-      <button className="mc-button mc-small" disabled={pending} onClick={() => void run(() => signOut())}>Sign out</button>
+      <button className="mc-button mc-small" disabled={pending} onClick={() => void run(async () => {
+        const result = await signOut()
+        if (result.error) throw new Error('Couldn’t sign out. Try again.')
+      })}>Sign out</button>
       {error && <p className="mc-error" role="alert">{error}</p>}
     </div>
   )

@@ -18,6 +18,31 @@ const PORT = Number(process.env.DEEPSPACE_PORT ?? 5173)
 const deployedUrl = process.env.MERGECOURT_TEST_URL
 const BASE_URL = deployedUrl ?? `http://127.0.0.1:${PORT}`
 
+const appServer = {
+  // Bind the local test server directly. A bare `--host` asks Vite to
+  // enumerate every interface, which fails in restricted containers before
+  // the app can start (`uv_interface_addresses`).
+  command: `npx vite --port ${PORT} --strictPort --host 127.0.0.1`,
+  cwd: '..',
+  // Readiness gates on the auth plane, not just vite: /api/auth/ok only
+  // answers once workerd behind /api/* has booted, so no test starts
+  // against a half-up server. Playwright keeps polling through non-OK
+  // responses and fails setup with its own clear error at the timeout.
+  url: `${BASE_URL}/api/auth/ok`,
+  reuseExistingServer: false,
+  timeout: 60_000,
+  stdout: 'pipe',
+  stderr: 'pipe',
+} as const
+const providerUrl = process.env.MERGECOURT_TEST_AI_FIXTURE
+const providerServers = providerUrl ? [{
+  command: 'node tests/helpers/ai-provider.mjs',
+  cwd: '..',
+  env: { MERGECOURT_PROVIDER_PORT: new URL(providerUrl).port },
+  url: new URL('/health', providerUrl).href,
+  reuseExistingServer: false,
+}] : []
+
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
@@ -28,20 +53,5 @@ export default defineConfig({
     headless: true,
     launchOptions: chromiumLaunchOptions(),
   },
-  webServer: deployedUrl ? undefined : {
-    // Bind the local test server directly. A bare `--host` asks Vite to
-    // enumerate every interface, which fails in restricted containers before
-    // the app can start (`uv_interface_addresses`).
-    command: `npx vite --port ${PORT} --strictPort --host 127.0.0.1`,
-    cwd: '..',
-    // Readiness gates on the auth plane, not just vite: /api/auth/ok only
-    // answers once workerd behind /api/* has booted, so no test starts
-    // against a half-up server. Playwright keeps polling through non-OK
-    // responses and fails setup with its own clear error at the timeout.
-    url: `${BASE_URL}/api/auth/ok`,
-    reuseExistingServer: false,
-    timeout: 60_000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: deployedUrl ? undefined : [appServer, ...providerServers],
 })

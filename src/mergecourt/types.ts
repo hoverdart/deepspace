@@ -34,3 +34,17 @@ export type Vote = { sessionId: string; findingId: string; voterId: string; verd
 export function presenceScope(roomId: string) {
   return `mergecourt:${roomId}`
 }
+
+export function isSettled(votes: Pick<Vote, 'verdict'>[]) {
+  return votes.length === 2 && votes[0].verdict === votes[1].verdict && votes[0].verdict !== 'needs_context'
+}
+
+export type AiCard = { title: string; analysis: string }
+export type AiReview = {
+  sessionId: string
+  status: 'PENDING' | 'READY' | 'FAILED'
+  startedAt: string
+  model: string
+  cards: AiCard[]
+  collaborators: string[]
+}

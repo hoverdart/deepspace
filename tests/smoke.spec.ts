@@ -49,7 +49,7 @@ test.describe('Smoke tests', () => {
 
   test('invalid invite stays on the landing page with an explanation', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Join via link' }).click()
+    await page.locator('summary').filter({ hasText: 'Join via link' }).click()
     await page.getByRole('textbox', { name: 'Invitation link or room ID' }).fill('wrong link')
     await page.getByRole('button', { name: 'Open room' }).click()
     await expect(page.getByRole('alert')).toContainText('Enter a MergeCourt invitation link')

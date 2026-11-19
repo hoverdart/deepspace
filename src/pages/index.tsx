@@ -14,7 +14,6 @@ const steps = [
 
 export default function Landing() {
   const navigate = useNavigate()
-  const [showJoin, setShowJoin] = useState(false)
   const [invitation, setInvitation] = useState('')
   const [error, setError] = useState('')
 
@@ -49,20 +48,18 @@ export default function Landing() {
               </p>
               <div className="mc-actions">
                 <Link className="mc-button mc-primary" to="/rooms/new">Start review <ArrowRight aria-hidden="true" size={19} /></Link>
-                <button type="button" className="mc-button" aria-expanded={showJoin} aria-controls="join-invite" onClick={() => setShowJoin(!showJoin)}>
-                  <Link2 aria-hidden="true" size={18} /> Join via link
-                </button>
+                <details className="mc-join" suppressHydrationWarning>
+                  <summary className="mc-button"><Link2 aria-hidden="true" size={18} /> Join via link</summary>
+                  <form className="mc-join-form" onSubmit={openInvitation}>
+                    <label htmlFor="invite">Invitation link or room ID</label>
+                    <div className="mc-actions">
+                      <input id="invite" value={invitation} onChange={(event) => setInvitation(event.target.value)} required />
+                      <button className="mc-button mc-primary" type="submit">Open room</button>
+                    </div>
+                    {error && <p className="mc-error" role="alert">{error}</p>}
+                  </form>
+                </details>
               </div>
-              {showJoin && (
-                <form className="mc-join-form" id="join-invite" onSubmit={openInvitation}>
-                  <label htmlFor="invite">Invitation link or room ID</label>
-                  <div className="mc-actions">
-                    <input id="invite" value={invitation} onChange={(event) => setInvitation(event.target.value)} required />
-                    <button className="mc-button mc-primary" type="submit">Open room</button>
-                  </div>
-                  {error && <p className="mc-error" role="alert">{error}</p>}
-                </form>
-              )}
             </div>
             <div className="mc-preview" aria-label="Example of a line-anchored code review">
               <div className="mc-preview-header">

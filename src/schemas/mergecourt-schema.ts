@@ -44,4 +44,17 @@ export const mergeCourtSchemas: CollectionSchema[] = [
     collaboratorsField: 'collaborators',
     permissions: sharedPermissions,
   },
+  {
+    name: 'ai_claims',
+    columns: [text('sessionId'), text('startedAt')],
+    uniqueOn: ['sessionId'],
+    permissions: privatePermissions,
+  },
+  {
+    name: 'ai_reviews',
+    columns: [text('sessionId'), text('status'), text('startedAt'), text('model'), json('cards'), json('collaborators')],
+    uniqueOn: ['sessionId'],
+    collaboratorsField: 'collaborators',
+    permissions: sharedPermissions,
+  },
 ]

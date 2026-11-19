@@ -11,7 +11,7 @@ import type { Context, Hono } from 'hono'
 import { authenticatedRoomRequest, resolveAppRole, verifyJwt } from 'deepspace/worker'
 import type { JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import type { AppContext, Env } from '../../worker.js'
-import { sendRoomCall } from '../actions/index.js'
+import { sendRoomCall } from './mergecourt-records.js'
 import { roomIdSchema } from '../mergecourt/validation.js'
 
 function jwtConfig(env: Env): JwtVerifierConfig {
@@ -123,10 +123,11 @@ async function resolveDocsYjsRole(
 }
 
 export function registerRealtimeRoutes(app: Hono<AppContext>): void {
-  app.get(
-    '/ws/:roomId',
-    wsRoute((env) => env.RECORD_ROOMS),
-  )
+  const recordsRoute = wsRoute((env) => env.RECORD_ROOMS)
+  app.get('/ws/:roomId', (c) => {
+    if (c.req.param('roomId') !== `app:${c.env.DEEPSPACE_APP_ID}`) return c.notFound()
+    return recordsRoute(c)
+  })
 
   app.get('/ws/yjs/:docId', async (c) => {
     const docId = c.req.param('docId')

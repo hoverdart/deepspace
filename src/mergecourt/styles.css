@@ -151,7 +151,11 @@ html[data-theme='paper'] {
   font-size: 1.05rem;
   line-height: 1.6;
 }
-.mc-join-form { margin-top: 1.3rem; }
+.mc-hero .mc-actions { align-items: flex-start; }
+.mc-join > summary { list-style: none; }
+.mc-join > summary::-webkit-details-marker { display: none; }
+.mc-join-form { margin-top: .75rem; max-width: 100%; }
+.mc-join-form .mc-button { white-space: nowrap; }
 .mc-join-form .mc-actions { margin-top: .35rem; }
 .mc-join-form input { flex: 1; }
 .mc-preview, .mc-source {

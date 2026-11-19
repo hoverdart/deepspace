@@ -1,16 +1,8 @@
-import type { ActionHandler, ActionResult } from 'deepspace/worker'
+import type { ActionHandler } from 'deepspace/worker'
 import type { Env } from '../../worker'
+import { sendRoomCall } from '../server/mergecourt-records'
+import { requestAiOpinion } from '../server/mergecourt-ai'
 import { roomCommands, type RoomCall } from '../server/mergecourt-workflow'
-
-export async function sendRoomCall(env: Env, call: RoomCall): Promise<ActionResult> {
-  const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
-  const response = await stub.fetch(new Request('https://internal/internal/mergecourt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(call),
-  }))
-  return response.json() as Promise<ActionResult>
-}
 
 function roomAction(name: RoomCall['name']): ActionHandler<Env> {
   return ({ env, userId, params, callerJwt }) => {
@@ -31,6 +23,7 @@ function readVerifiedName(jwt: string) {
   }
 }
 
-export const actions: Record<string, ActionHandler<Env>> = Object.fromEntries(
-  roomCommands.map((name) => [name, roomAction(name)]),
-)
+export const actions: Record<string, ActionHandler<Env>> = {
+  ...Object.fromEntries(roomCommands.map((name) => [name, roomAction(name)])),
+  requestAiOpinion,
+}

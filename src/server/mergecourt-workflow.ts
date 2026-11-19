@@ -1,8 +1,8 @@
 import type { ActionResult } from 'deepspace/worker'
 import { z } from 'zod'
 import { getChallenge } from '../mergecourt/challenges'
-import { findingSchema, roomIdSchema } from '../mergecourt/validation'
-import { verdictChoices, type Finding, type FindingInput, type Session, type Submission, type Vote } from '../mergecourt/types'
+import { aiCardsSchema, findingSchema, roomIdSchema } from '../mergecourt/validation'
+import { verdictChoices, type AiReview, type Finding, type FindingInput, type Session, type Submission, type Vote } from '../mergecourt/types'
 import type { createRoomRecords } from './mergecourt-records'
 
 type Records = ReturnType<typeof createRoomRecords>
@@ -10,12 +10,12 @@ type StoredFinding = FindingInput & { sessionId: string; authorId: string }
 
 export const roomCommands = [
   'createRoom', 'getRoomInvite', 'joinRoom', 'startRoom', 'getOwnFindings', 'createFinding', 'updateFinding',
-  'deleteFinding', 'submitReview', 'revealRoom', 'vote', 'closeRoom', 'getReferenceGuide',
+  'deleteFinding', 'submitReview', 'revealRoom', 'vote', 'closeRoom', 'getReferenceGuide', 'getAiAvailability',
 ] as const
 export type RoomCommand = (typeof roomCommands)[number]
 
 export type RoomCall = {
-  name: RoomCommand | 'authorizePresence'
+  name: RoomCommand | 'authorizePresence' | 'claimAiOpinion' | 'completeAiOpinion'
   params: Record<string, unknown>
   userId: string
   displayName?: string
@@ -47,10 +47,10 @@ function presentFinding(id: string, data: StoredFinding): Finding {
 export async function executeRoomCall(
   call: RoomCall,
   records: Records,
-  referenceGuide: string | undefined,
+  config: { referenceGuide?: string; aiOwner?: string },
 ): Promise<ActionResult> {
   try {
-    return await runRoomCall(call, records, referenceGuide)
+    return await runRoomCall(call, records, config)
   } catch (error) {
     if (error instanceof RoomError) {
       return { success: false, error: error.message, status: error.status }
@@ -63,7 +63,7 @@ export async function executeRoomCall(
 async function runRoomCall(
   { name, params, userId, displayName }: RoomCall,
   records: Records,
-  referenceGuide: string | undefined,
+  config: { referenceGuide?: string; aiOwner?: string },
 ) {
   if (name === 'createRoom') {
     const challengeId = parse(z.string().max(80), params.challengeId)
@@ -233,9 +233,45 @@ async function runRoomCall(
         status: 'CLOSED', closedAt: new Date().toISOString(),
       }))
       return ok({})
+    case 'getAiAvailability': {
+      const approved = host && userId === config.aiOwner && session.status === 'REVEALED'
+      if (!approved) return ok({ canRequest: false })
+      const claim = await records.get<{ startedAt: string }>('ai_claims', roomId)
+      return ok({ canRequest: !claim, startedAt: claim?.data.startedAt })
+    }
+    case 'claimAiOpinion': {
+      requireHost()
+      requirePhase('REVEALED')
+      if (userId !== config.aiOwner) throw new RoomError('The AI opinion is available in rooms hosted by the app owner.', 403)
+      if (await records.get('ai_claims', roomId)) throw new RoomError('This room has already used its AI request.')
+      const startedAt = new Date().toISOString()
+      confirmWrite(await records.create('ai_claims', { sessionId: roomId, startedAt }, roomId))
+      const review: AiReview = {
+        sessionId: roomId, status: 'PENDING', cards: [], model: '', startedAt, collaborators: session.collaborators,
+      }
+      confirmWrite(await records.create('ai_reviews', review, roomId))
+      return ok({ challengeId: session.challengeId, findings: session.findings })
+    }
+    case 'completeAiOpinion': {
+      requireHost()
+      if (userId !== config.aiOwner) throw new RoomError('This request is unavailable.', 403)
+      if (session.status !== 'REVEALED' && session.status !== 'CLOSED') {
+        throw new RoomError('This request is unavailable.')
+      }
+      const review = await records.get<AiReview>('ai_reviews', roomId)
+      if (!review) throw new RoomError('This request is unavailable.')
+      if (review.data.status !== 'PENDING') return ok({})
+      const result = aiCardsSchema.safeParse(params.cards)
+      confirmWrite(await records.update('ai_reviews', roomId, {
+        status: result.success ? 'READY' : 'FAILED',
+        cards: result.success ? result.data : [],
+        model: typeof params.model === 'string' ? params.model : '',
+      }))
+      return ok({})
+    }
     case 'getReferenceGuide': {
       requirePhase('CLOSED')
-      const guide = readReferenceGuide(referenceGuide, session.challengeId)
+      const guide = readReferenceGuide(config.referenceGuide, session.challengeId)
       if (!guide?.length) throw new RoomError('The reference guide is unavailable.', 503)
       return ok({ guide })
     }

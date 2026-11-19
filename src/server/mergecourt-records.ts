@@ -1,6 +1,9 @@
 import { RECORD_NOT_FOUND } from 'deepspace/worker'
 import type { ActionResult, GetActionData, MutateActionData, QueryActionData } from 'deepspace/worker'
 
+import type { Env } from '../../worker'
+import type { RoomCall } from './mergecourt-workflow'
+
 type RecordFetch = (request: Request) => Promise<Response>
 
 export function createRoomRecords(fetchRecord: RecordFetch, userId: string) {
@@ -36,4 +39,14 @@ export function createRoomRecords(fetchRecord: RecordFetch, userId: string) {
     remove: (collection: string, recordId: string) =>
       run<MutateActionData>('records.delete', { collection, recordId }),
   }
+}
+
+export async function sendRoomCall(env: Env, call: RoomCall): Promise<ActionResult> {
+  const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
+  const response = await stub.fetch(new Request('https://internal/internal/mergecourt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(call),
+  }))
+  return response.json() as Promise<ActionResult>
 }

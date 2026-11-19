@@ -60,7 +60,10 @@ export class AppRecordRoom extends RecordRoom<Env> {
     const run = () => executeRoomCall(
       call,
       createRoomRecords((operation) => super.fetch(operation), call.userId),
-      this.env.MERGECOURT_REFERENCE_GUIDE,
+      {
+        referenceGuide: this.env.MERGECOURT_REFERENCE_GUIDE,
+        aiOwner: this.env.MERGECOURT_AI_ENABLED === 'true' ? this.env.OWNER_USER_ID : undefined,
+      },
     )
     const roomId = call.params.roomId
     if (typeof roomId !== 'string') return Response.json(await run())
@@ -136,6 +139,7 @@ export interface Env extends DOBindings<typeof __DO_MANIFEST__> {
   DEEPSPACE_APP_ID: string
   OWNER_USER_ID: string
   MERGECOURT_REFERENCE_GUIDE?: string
+  MERGECOURT_AI_ENABLED?: string
   /**
    * Long-lived owner JWT used for developer-billed server calls. User-billed
    * calls always forward the signed-in caller's JWT instead.

@@ -29,6 +29,7 @@ run_worker_first = ["/api/*", "/ws/*", "/internal/*", "/v1/*", "/_deepspace/*", 
 [vars]
 DEEPSPACE_APP_ID = "app_01M7SCCK5KAHBC32DQTGM0BAY6"
 APP_NAME = "mergecourt-hoverdart"
+MERGECOURT_AI_ENABLED = "true"
 # Exact comma-separated native callback URIs. Set this before deploying an
 # Expo client, for example: "myapp://auth/callback".
 NATIVE_AUTH_REDIRECT_URIS = ""
