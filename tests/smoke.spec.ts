@@ -1,17 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { captureConsoleErrors } from './helpers/errors'
 
-/**
- * Smoke tests covering both page kinds this template ships:
- *   - '/'      → the static landing (top level of src/pages/): no providers,
- *                so no auth fetch and no records WebSocket on load.
- *   - '/home'  → a dynamic page (under src/pages/(app)/): the providers mount,
- *                the nav shell renders, and the records WebSocket connects.
- *
- * The "static contract" test is the guardrail for the per-page opt-out: if
- * someone moves the providers back up into _app.tsx, it fails.
- */
-
 /** Wait for the React app shell (present on every page). */
 async function waitForApp(page: import('@playwright/test').Page) {
   await page.waitForSelector('[data-testid="app-root"]', { timeout: 15000 })
@@ -52,15 +41,18 @@ test.describe('Smoke tests', () => {
     expect(offenders).toEqual([])
   })
 
-  test('dynamic app boundary mounts on /home', async ({ page }) => {
-    await page.goto('/home')
-    await expect(page.getByTestId('app-navigation')).toBeVisible({ timeout: 15000 })
+  test('protected room picker prompts signed-out visitors to sign in', async ({ page }) => {
+    await page.goto('/rooms/new')
+    await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
   })
 
-  test('sign-in button visible when logged out', async ({ page }) => {
-    await page.goto('/home')
-    await expect(page.getByTestId('nav-sign-in-button')).toBeVisible({ timeout: 15000 })
-    await expect(page.getByTestId('nav-user-name')).toHaveCount(0)
+  test('invalid invite stays on the landing page with an explanation', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Join via link' }).click()
+    await page.getByRole('textbox', { name: 'Invitation link or room ID' }).fill('wrong link')
+    await page.getByRole('button', { name: 'Open room' }).click()
+    await expect(page.getByRole('alert')).toContainText('Enter a MergeCourt invitation link')
   })
 
   test('unknown route shows 404', async ({ page }) => {

@@ -1,3 +1,4 @@
+import { RECORD_NOT_FOUND } from 'deepspace/worker'
 import type { ActionResult, GetActionData, MutateActionData, QueryActionData } from 'deepspace/worker'
 
 type RecordFetch = (request: Request) => Promise<Response>
@@ -20,7 +21,7 @@ export function createRoomRecords(fetchRecord: RecordFetch, userId: string) {
     async get<T extends Record<string, unknown>>(collection: string, recordId: string) {
       const result = await run<GetActionData<T>>('records.get', { collection, recordId })
       if (result.success) return result.data.record
-      if (/not found/i.test(result.error)) return null
+      if (result.error === RECORD_NOT_FOUND) return null
       throw new Error('Record lookup failed.')
     },
     async query<T extends Record<string, unknown>>(collection: string, where: Record<string, string>) {

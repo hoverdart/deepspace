@@ -162,6 +162,7 @@ app.use('*', async (c, next) => {
 
 // Registration order is part of the worker contract. The wildcard auth route
 // follows its special cases, AI precedes platform proxies, and static is last.
+app.post('/internal/mergecourt', (c) => c.notFound())
 registerAuthAndIntegrationRoutes(app)
 registerRealtimeRoutes(app)
 registerActionRoutes(app, resolveAuth)

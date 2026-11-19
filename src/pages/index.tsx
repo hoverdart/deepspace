@@ -1,49 +1,100 @@
-/**
- * Landing page — a STATIC page.
- *
- * It lives at the top level of src/pages/ (not under (app)/), so it renders
- * with no DeepSpace providers: no auth session fetch, no records WebSocket.
- * That makes it cheap to serve and safe for logged-out / crawler traffic.
- *
- * Need live data or auth here? Move this file to src/pages/(app)/index.tsx
- * and it becomes a dynamic page. Conversely, any page you want to keep static
- * (marketing, docs, legal) belongs at this top level.
- *
- * Top-level pages are also prerendered to static HTML at build
- * (prerender.ts, via vite.config.ts) so crawlers read real content.
- * Keep them renderable without a browser: no window/document during render,
- * prose in HTML text, reveal animations in CSS keyframes rather than JS-driven
- * initial states. `<Seo>` comes first and reads src/seo.ts.
- */
-
-import { Link } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { ArrowRight, FileCode2, Link2, LockKeyhole, ScanLine, Vote } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Seo } from '../components/Seo'
-import { APP_NAME } from '../constants'
+import { Wordmark } from '../mergecourt/brand'
+import { roomIdSchema } from '../mergecourt/validation'
 import { seo } from '../seo'
 
+const steps = [
+  { title: 'Review in private', copy: 'Read the same pull request. File and lock your own findings.', icon: LockKeyhole },
+  { title: 'Reveal the findings', copy: 'See both reviews and compare what each of you caught.', icon: ScanLine },
+  { title: 'Cast your verdict', copy: 'Vote on each finding and see where your judgments agree.', icon: Vote },
+]
+
 export default function Landing() {
+  const navigate = useNavigate()
+  const [showJoin, setShowJoin] = useState(false)
+  const [invitation, setInvitation] = useState('')
+  const [error, setError] = useState('')
+
+  function openInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const value = invitation.trim().replace(/\/$/, '')
+    const roomId = roomIdSchema.safeParse(value.match(/\/rooms\/([^/?#]+)(?:[?#].*)?$/)?.[1] ?? value)
+    if (!roomId.success) {
+      setError('Enter a MergeCourt invitation link or room ID.')
+      return
+    }
+    void navigate(`/rooms/${roomId.data}`)
+  }
+
   return (
     <>
       <Seo {...seo} path="/" />
-      <div
-        data-testid="static-landing"
-        className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
-      >
-        <p className="mb-3 text-sm uppercase tracking-widest text-muted-foreground">{APP_NAME}</p>
-        <h1 className="mb-4 max-w-2xl text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-          A DeepSpace app with a static front door
-        </h1>
-        <p className="mb-8 max-w-md text-muted-foreground">
-          This landing page ships no auth call and no realtime connection — it's a
-          plain static page. The live app, with sign-in and synced data, lives
-          behind the link below.
-        </p>
-        <Link
-          to="/home"
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          Enter the app
-        </Link>
+      <div data-testid="static-landing" className="mc-page">
+        <header className="mc-header">
+          <div className="mc-container mc-header-inner">
+            <Wordmark />
+            <a className="mc-text-link" href="#how-it-works">How it works</a>
+          </div>
+        </header>
+        <main className="mc-container">
+          <section className="mc-hero">
+            <div>
+              <h1>Find the bug.<br />Defend the finding.<br /><em>Reach a verdict.</em></h1>
+              <p className="mc-hero-copy">
+                A two-person code review game. Inspect the same code in private,
+                reveal your findings together, and decide what holds up.
+              </p>
+              <div className="mc-actions">
+                <Link className="mc-button mc-primary" to="/rooms/new">Start review <ArrowRight aria-hidden="true" size={19} /></Link>
+                <button type="button" className="mc-button" aria-expanded={showJoin} aria-controls="join-invite" onClick={() => setShowJoin(!showJoin)}>
+                  <Link2 aria-hidden="true" size={18} /> Join via link
+                </button>
+              </div>
+              {showJoin && (
+                <form className="mc-join-form" id="join-invite" onSubmit={openInvitation}>
+                  <label htmlFor="invite">Invitation link or room ID</label>
+                  <div className="mc-actions">
+                    <input id="invite" value={invitation} onChange={(event) => setInvitation(event.target.value)} required />
+                    <button className="mc-button mc-primary" type="submit">Open room</button>
+                  </div>
+                  {error && <p className="mc-error" role="alert">{error}</p>}
+                </form>
+              )}
+            </div>
+            <div className="mc-preview" aria-label="Example of a line-anchored code review">
+              <div className="mc-preview-header">
+                <span><FileCode2 size={16} aria-hidden="true" /> reserve-seats.ts</span>
+                <span>Example review</span>
+              </div>
+              <div className="mc-preview-source">
+                <div><span>13</span><code><b>const</b> event = <b>await</b> db.getEvent(eventId)</code></div>
+                <div><span>14</span><code><b>if</b> (!event) <b>throw new</b> Error(<i>'Event not found'</i>)</code></div>
+                <div className="mc-preview-marked"><span>15</span><code><b>if</b> (seats &lt; 0) <b>throw new</b> Error(<i>'Seats must be positive'</i>)</code></div>
+                <div><span>16</span><code><b>if</b> (event.seatsLeft &lt; seats)</code></div>
+                <div><span>17</span><code>  <b>throw new</b> Error(<i>'Sold out'</i>)</code></div>
+              </div>
+              <div className="mc-preview-finding">
+                <div className="mc-finding-meta"><span>Line 15</span><span className="mc-tag">Needs context</span></div>
+                <strong>Check the input boundary</strong>
+                <p>What inputs can reach this function?</p>
+              </div>
+            </div>
+          </section>
+          <section aria-labelledby="how-it-works" className="mc-workflow">
+            <h2 id="how-it-works">How it works</h2>
+            <ol className="mc-steps">
+              {steps.map(({ title, copy, icon: Icon }) => (
+                <li key={title}>
+                  <Icon aria-hidden="true" size={22} />
+                  <div><h3>{title}</h3><p>{copy}</p></div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </main>
       </div>
     </>
   )

@@ -9,7 +9,7 @@ type Records = ReturnType<typeof createRoomRecords>
 type StoredFinding = FindingInput & { sessionId: string; authorId: string }
 
 export const roomCommands = [
-  'createRoom', 'joinRoom', 'startRoom', 'getOwnFindings', 'createFinding', 'updateFinding',
+  'createRoom', 'getRoomInvite', 'joinRoom', 'startRoom', 'getOwnFindings', 'createFinding', 'updateFinding',
   'deleteFinding', 'submitReview', 'revealRoom', 'vote', 'closeRoom', 'getReferenceGuide',
 ] as const
 export type RoomCommand = (typeof roomCommands)[number]
@@ -83,6 +83,9 @@ async function runRoomCall(
 
   const roomId = parse(roomIdSchema, params.roomId)
   const session = (await records.get<Session>('sessions', roomId))?.data
+  if (name === 'getRoomInvite') {
+    return ok({ joinable: session?.status === 'LOBBY' && session.collaborators.length < 2 })
+  }
   const member = session?.collaborators.includes(userId) ?? false
   const host = session?.hostId === userId
   if (!session || (!member && (name !== 'joinRoom' || session.status !== 'LOBBY'))) {
@@ -232,12 +235,22 @@ async function runRoomCall(
       return ok({})
     case 'getReferenceGuide': {
       requirePhase('CLOSED')
-      const guides = parse(z.record(z.string(), z.array(z.object({
-        title: z.string(), explanation: z.string(),
-      }))), JSON.parse(referenceGuide || '{}'))
-      const guide = guides[session.challengeId]
+      const guide = readReferenceGuide(referenceGuide, session.challengeId)
       if (!guide?.length) throw new RoomError('The reference guide is unavailable.', 503)
       return ok({ guide })
     }
+  }
+}
+
+function readReferenceGuide(raw: string | undefined, challengeId: string) {
+  if (!raw) return undefined
+  try {
+    const json = new TextDecoder().decode(Uint8Array.from(atob(raw), (character) => character.charCodeAt(0)))
+    const result = z.record(z.string(), z.array(z.object({
+      title: z.string(), explanation: z.string(),
+    }))).safeParse(JSON.parse(json))
+    return result.success ? result.data[challengeId] : undefined
+  } catch {
+    return undefined
   }
 }
