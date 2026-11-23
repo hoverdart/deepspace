@@ -8,6 +8,30 @@ test('room actions require a signed-in caller; private endpoints stay internal',
   expect((await request.post('/api/tools/execute', { headers: { 'X-App-Action': 'true' }, data: {} })).status()).toBe(404)
 })
 
+test('browser OAuth sends users to the room picker or back to their invitation', async ({ request }) => {
+  const legacy = await request.get('/home', { maxRedirects: 0 })
+  expect(legacy.status()).toBe(302)
+  expect(legacy.headers().location).toBe('/rooms/new')
+
+  const direct = await request.get('/api/auth/oauth-complete', { maxRedirects: 0 })
+  expect(direct.status()).toBe(302)
+  expect(direct.headers().location).toBe('/rooms/new')
+
+  const room = `/rooms/${crypto.randomUUID()}`
+  const start = await request.get('/api/auth/social-redirect?provider=github', {
+    headers: { Referer: new URL(room, legacy.url()).href },
+    maxRedirects: 0,
+  })
+  expect(start.status()).toBe(302)
+  const returnCookie = start.headers()['set-cookie'].split(';')[0]
+  const callback = await request.get('/api/auth/oauth-complete', {
+    headers: { Cookie: returnCookie },
+    maxRedirects: 0,
+  })
+  expect(callback.headers().location).toBe(room)
+  expect(callback.headers()['set-cookie']).toContain('Max-Age=0')
+})
+
 test('the native invite form redirects only to MergeCourt rooms', async ({ request }) => {
   const roomId = crypto.randomUUID()
   const valid = await request.get('/join', {

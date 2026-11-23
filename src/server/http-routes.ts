@@ -7,6 +7,7 @@
  */
 
 import type { Hono } from 'hono'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import {
   apiWorkerFetch,
@@ -30,7 +31,24 @@ import {
 } from 'deepspace/worker'
 import type { ExpoAuthBridgeOptions, JwtVerifierConfig, VerifyResult } from 'deepspace/worker'
 import { integrations } from '../integrations.js'
+import { roomIdSchema } from '../mergecourt/validation.js'
 import type { AppContext, Env } from '../../worker.js'
+
+const ROOM_PICKER = '/rooms/new'
+const OAUTH_RETURN_COOKIE = 'mergecourt-oauth-return'
+const oauthReturnCookieOptions = {
+  path: '/api/auth/oauth-complete',
+  httpOnly: true,
+  secure: true,
+  sameSite: 'Lax',
+} as const
+
+function oauthDestination(path: string | undefined): string {
+  const roomPrefix = '/rooms/'
+  if (!path?.startsWith(roomPrefix)) return ROOM_PICKER
+  const roomId = roomIdSchema.safeParse(path.slice(roomPrefix.length))
+  return roomId.success ? `${roomPrefix}${roomId.data.toLowerCase()}` : ROOM_PICKER
+}
 
 function jwtConfig(env: Env): JwtVerifierConfig {
   return { publicKey: env.AUTH_JWT_PUBLIC_KEY, issuer: env.AUTH_JWT_ISSUER }
@@ -83,12 +101,19 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
   app.post('/api/auth/native-signout', (c) => nativeAuthSignOut(c.req.raw, c.env))
 
   // Social OAuth redirect + code exchange.
+  app.get('/home', (c) => c.redirect(ROOM_PICKER))
+
   app.get('/api/auth/social-redirect', (c) => {
     const provider = c.req.query('provider')
     if (!provider) return c.json({ error: 'Missing provider' }, 400)
 
     const appOrigin = new URL(c.req.url).origin
     const authOrigin = new URL(c.env.AUTH_WORKER_URL).origin
+    const referer = c.req.header('Referer')
+    const referringPage = referer && URL.canParse(referer) ? new URL(referer) : null
+    const destination = oauthDestination(referringPage?.origin === appOrigin ? referringPage.pathname : undefined)
+    setCookie(c, OAUTH_RETURN_COOKIE, destination, { ...oauthReturnCookieOptions, maxAge: 600 })
+    c.header('Cache-Control', 'no-store')
 
     return c.redirect(
       `${authOrigin}/login/social?provider=${encodeURIComponent(provider)}&returnTo=${encodeURIComponent(appOrigin)}`,
@@ -100,13 +125,11 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
       return nativeAuthCallback(c.req.raw, c.env, nativeAuthOptions(c.env))
     }
     const code = c.req.query('code')
-    const appOrigin = new URL(c.req.url).origin
-    // Land the signed-in user in the app, not on the static landing. `/` is a
-    // static page (no auth/realtime providers), so redirecting there after auth
-    // would strand the user; `/home` is the dynamic app boundary.
-    const appHome = `${appOrigin}/home`
+    const destination = oauthDestination(getCookie(c, OAUTH_RETURN_COOKIE))
+    deleteCookie(c, OAUTH_RETURN_COOKIE, oauthReturnCookieOptions)
+    c.header('Cache-Control', 'no-store')
 
-    if (!code) return c.redirect(appHome)
+    if (!code) return c.redirect(destination)
 
     const res = await authWorkerFetch(c.env, '/api/auth/exchange-code', {
       method: 'POST',
@@ -114,18 +137,17 @@ export function registerAuthAndIntegrationRoutes(app: Hono<AppContext>): void {
       body: JSON.stringify({ code }),
     })
 
-    if (!res.ok) return c.redirect(appHome)
+    if (!res.ok) return c.redirect(destination)
     const data = (await res.json()) as { sessionToken?: string }
-    if (!data.sessionToken) return c.redirect(appHome)
-    const sessionToken = data.sessionToken
-
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: appHome,
-        'Set-Cookie': `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
-      },
+    if (!data.sessionToken) return c.redirect(destination)
+    setCookie(c, SESSION_COOKIE, data.sessionToken, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Lax',
+      maxAge: 2_592_000,
     })
+    return c.redirect(destination)
   })
 
   app.all('/api/auth/sign-out', async (c) => {
@@ -375,7 +397,7 @@ export function registerStaticRoutes(app: Hono<AppContext>): void {
       return c.json({ error: 'not_found' }, 404)
     }
     // Once the prerender has run, `/` is the landing page, not an empty
-    // shell — serving it for /home would paint the landing for a frame and
+    // shell — serving it for /rooms/new would paint the landing for a frame and
     // hand crawlers the `/` canonical on every app route. Ask for the plain
     // shell the build writes first; a build without it (plain SPA,
     // `deepspace dev`) misses and falls through to `/` exactly as before.
