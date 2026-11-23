@@ -19,10 +19,16 @@ createServer(async (request, response) => {
     const source = JSON.parse(body.messages.find(({ role }) => role === 'user').content)
     const key = source.findings[0]?.title
     calls.set(key, (calls.get(key) ?? 0) + 1)
-    if (body.model !== 'gpt-4o-mini' || body.max_tokens > 650 || !source.source.includes('function')) {
+    const game = source.findings[0]?.number === 1
+    if (body.model !== 'gpt-4o-mini' || body.max_tokens > (game ? 2600 : 650) || !source.source.includes('function')) {
       return send(400, { success: false, error: 'unexpected_model_request' })
     }
     if (key.includes('fail-provider')) return send(402, { success: false, error: 'insufficient_credits' })
+    if (game) return send(200, {
+      success: true,
+      data: { choices: [{ message: { content: source.findings.map(({ number }) =>
+        `${number}|valid|The discount must divide the percentage by 100.`).join('\n') } }] },
+    })
     return send(200, {
       success: true,
       data: { choices: [{ message: { content: [

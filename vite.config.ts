@@ -62,6 +62,6 @@ export default defineConfig({
     // Scoped to src/pages (NOT all of src) so worker-only modules — actions, cron, jobs,
     // ai, which import deepspace/worker — are not dragged into the client optimizer.
     // Dev-only; `vite build` ignores optimizeDeps.
-    entries: ['./index.html', './src/pages/**/*.tsx'],
+    entries: ['./index.html', './src/pages/**/*.tsx', './src/mergecourt/source-view.tsx'],
   },
 })

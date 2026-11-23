@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { aiCardLimits, aiCardsSchema } from '../mergecourt/validation'
-import { parseOpinion } from './mergecourt-ai'
+import { parseJury, parseOpinion } from './mergecourt-ai'
 
 describe('parseOpinion', () => {
   it('keeps usable notes when a Markdown section exceeds the display limit', () => {
@@ -33,5 +33,20 @@ describe('parseOpinion', () => {
     expect(parseOpinion('{"cards":')).toBeNull()
     expect(parseOpinion('```json\n{"cards":')).toBeNull()
     expect(parseOpinion({ cards: [] })).toBeNull()
+  })
+})
+
+
+describe('parseJury', () => {
+  it('maps usable numbered ballots without losing them to an incomplete response', () => {
+    const reply = [
+      '1|valid|Divide the coupon percent by 100.',
+      '3|false_positive|This refers to a proposal that does not exist.',
+      '1|needs_context|Ignore duplicate judgments.',
+      '2|not_a_verdict|Ignore this line.',
+    ].join('\n')
+    expect(parseJury(reply, [{ id: 'coupon' }, { id: 'rounding' }])).toEqual({
+      coupon: { verdict: 'valid', reason: 'Divide the coupon percent by 100.', source: 'model' },
+    })
   })
 })

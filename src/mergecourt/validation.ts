@@ -3,7 +3,7 @@ import { categories, severities } from './types'
 
 export const roomIdSchema = z.uuid({ message: 'This invitation is invalid.' })
 
-export const findingLimits = { title: 80, explanation: 600, suggestedFix: 300 } as const
+export const findingLimits = { title: 80, explanation: 600, suggestedFix: 800 } as const
 
 export const findingSchema = z.object({
   lineStart: z.number().int().min(1),

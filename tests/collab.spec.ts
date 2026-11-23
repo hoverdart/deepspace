@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect, loadAllTestAccounts } from 'deepspace/testing'
+import { action } from './helpers/rooms'
 
 test('two reviewers join live, keep findings private, reveal, vote, and reopen results', async ({ users, browser, baseURL }) => {
   const [alice, bob] = await users(2)
@@ -9,9 +10,9 @@ test('two reviewers join live, keep findings private, reveal, vote, and reopen r
   for (const page of [host, guest]) page.on('pageerror', (error) => errors.push(error.message))
   await guest.setViewportSize({ width: 390, height: 844 })
 
-  await host.goto('/rooms/new')
-  await expect(host.getByRole('heading', { name: 'Start a review' })).toBeVisible()
-  await host.getByRole('button', { name: 'Create room' }).click()
+  const room = await action(host, 'createRoom', { challengeId: 'reservation-race' })
+  expect(room.status).toBe(200)
+  await host.goto(`/rooms/${room.data.roomId}`)
   await expect(host.getByRole('heading', { name: 'Reservation race' })).toBeVisible()
   await expect(host.getByRole('button', { name: 'Start review' })).toBeDisabled()
   const invite = await host.getByRole('textbox', { name: 'Invitation link' }).inputValue()

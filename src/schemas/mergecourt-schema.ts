@@ -18,7 +18,7 @@ export const mergeCourtSchemas: CollectionSchema[] = [
     name: 'sessions',
     columns: [
       text('challengeId'), text('status'), text('hostId'), json('collaborators'),
-      json('participants'), json('findings'), text('closedAt'),
+      json('participants'), json('findings'), text('closedAt'), json('game'),
     ],
     collaboratorsField: 'collaborators',
     permissions: sharedPermissions,
@@ -45,8 +45,14 @@ export const mergeCourtSchemas: CollectionSchema[] = [
     permissions: sharedPermissions,
   },
   {
+    name: 'game_votes',
+    columns: [text('sessionId'), text('findingId'), text('voterId'), text('verdict')],
+    uniqueOn: ['findingId', 'voterId'],
+    permissions: privatePermissions,
+  },
+  {
     name: 'ai_claims',
-    columns: [text('sessionId'), text('startedAt')],
+    columns: [text('sessionId'), text('startedAt'), text('gameStatus'), json('judgments')],
     uniqueOn: ['sessionId'],
     permissions: privatePermissions,
   },

@@ -3,7 +3,7 @@ import { Eye, LockKeyhole, Plus } from 'lucide-react'
 import type { Challenge } from './challenges'
 import { roomAction, useRoomAction } from './client'
 import { SourceView } from './source-view'
-import { categories, severities, type Finding, type FindingInput } from './types'
+import { categories, maxProposals, severities, type Finding, type FindingInput } from './types'
 import { useRoomRead } from './use-room-read'
 import { findingLimits } from './validation'
 
@@ -14,6 +14,8 @@ type ReviewProps = {
   locked: boolean
   allSubmitted: boolean
   submissionsReady: boolean
+  timed?: boolean
+  expired?: boolean
 }
 
 const blankFinding: FindingInput = {
@@ -39,7 +41,7 @@ export function ReviewDesk(props: ReviewProps) {
   return <ReviewEditor {...props} initialFindings={privateReview.data.findings} />
 }
 
-function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissionsReady, initialFindings }:
+function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissionsReady, timed, expired, initialFindings }:
   ReviewProps & { initialFindings: Finding[] }) {
   const [findings, setFindings] = useState(initialFindings)
   const [editor, setEditor] = useState<{ id?: string; values: FindingInput }>()
@@ -49,11 +51,11 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
   const titleInput = useRef<HTMLInputElement>(null)
   const { pending, error, run } = useRoomAction()
   const reviewLocked = locked || submitted
-  const editable = submissionsReady && !reviewLocked && !pending
+  const editable = submissionsReady && !reviewLocked && !pending && !expired
   const lineCount = challenge.source.split('\n').length
 
   function openLine(line: number) {
-    if (!editor && findings.length >= 5) return
+    if (!editor && findings.length >= maxProposals) return
     setEditor((previous) => ({ id: previous?.id, values: { ...previous?.values ?? blankFinding, lineStart: line, lineEnd: line } }))
     requestAnimationFrame(() => titleInput.current?.focus())
   }
@@ -105,15 +107,17 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
       <section className="mc-panel mc-review-panel">
         <div className="mc-panel-heading">
           <h2><LockKeyhole size={20} aria-hidden="true" /> Private findings</h2>
-          <span className="mc-tag">{findings.length} / 5</span>
+          <span className="mc-tag">{findings.length} / {maxProposals}</span>
         </div>
-        <p>{reviewLocked ? 'Your review is locked.' : 'Only you can see these findings until the host reveals both reviews.'}</p>
+        <p>{expired ? 'Time’s up. Your saved proposals go to the vote.'
+          : reviewLocked ? 'Your review is locked.'
+          : timed ? 'Choose a line, explain the bug, and save a proposed fix.' : 'Only you can see these findings until the host reveals both reviews.'}</p>
         {!submissionsReady && <p role="status">Connecting to review status… <button className="mc-inline-btn" onClick={() => window.location.reload()}>Reconnect</button></p>}
         {error && <p className="mc-error" role="alert">{error}</p>}
         {feedback && <p className="mc-feedback" role="status">{feedback}</p>}
         {!reviewLocked && editor && (
           <form className="mc-finding-form" onSubmit={(event) => void saveFinding(event)}>
-            <fieldset disabled={pending}>
+            <fieldset disabled={pending || expired}>
               <legend>{editor.id ? 'Edit finding' : 'New finding'}</legend>
               <div className="mc-fields-pair">
                 <label>Start line<input type="number" min="1" max={lineCount} required value={editor.values.lineStart || ''} onChange={(event) => change('lineStart', Number(event.target.value))} /></label>
@@ -127,7 +131,7 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
               </div>
               <label>Finding title<input ref={titleInput} value={editor.values.title} maxLength={findingLimits.title} required onChange={(event) => change('title', event.target.value)} /></label>
               <label>Explanation<textarea value={editor.values.explanation} maxLength={findingLimits.explanation} rows={4} required onChange={(event) => change('explanation', event.target.value)} /></label>
-              <label>Suggested fix <span className="mc-muted">(optional)</span><textarea value={editor.values.suggestedFix} maxLength={findingLimits.suggestedFix} rows={2} onChange={(event) => change('suggestedFix', event.target.value)} /></label>
+              <label>{timed ? "Proposed fix" : "Suggested fix"} <span className="mc-muted">(optional)</span><textarea className={timed ? "mc-fix-input" : undefined} value={editor.values.suggestedFix} maxLength={findingLimits.suggestedFix} rows={timed ? 4 : 2} onChange={(event) => change('suggestedFix', event.target.value)} /></label>
               <div className="mc-actions">
                 <button className="mc-button mc-primary" type="submit">{pending ? 'Saving…' : 'Save finding'}</button>
                 <button className="mc-button" type="button" onClick={() => setEditor(undefined)}>Cancel</button>
@@ -156,7 +160,7 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
           <div className="mc-review-footer">
             {confirmEmpty && <p role="status">Submit an empty review? This will lock it for this room.</p>}
             <div className="mc-actions">
-              {!editor && findings.length < 5 && <button className="mc-button" disabled={!editable} onClick={() => openLine(1)}>
+              {!editor && findings.length < maxProposals && <button className="mc-button" disabled={!editable} onClick={() => openLine(1)}>
                 <Plus size={17} aria-hidden="true" /> Add finding
               </button>}
               <button className="mc-button mc-primary" disabled={!editable || !!editor} onClick={() => void submitReview()}>
@@ -168,8 +172,8 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
         )}
         {reviewLocked && (
           <div className="mc-review-footer">
-            <p>{allSubmitted ? 'Both reviews are ready to reveal.' : 'Waiting for the other reviewer to submit.'}</p>
-            {host && <button className="mc-button mc-primary" disabled={!allSubmitted || pending} onClick={() => void run(() => roomAction('revealRoom', { roomId }))}>
+            <p>{timed ? 'Waiting for the vote to start.' : allSubmitted ? 'Both reviews are ready to reveal.' : 'Waiting for the other reviewer to submit.'}</p>
+            {host && !timed && <button className="mc-button mc-primary" disabled={!allSubmitted || pending} onClick={() => void run(() => roomAction('revealRoom', { roomId }))}>
               <Eye size={17} aria-hidden="true" /> {pending ? 'Revealing…' : 'Reveal findings'}
             </button>}
           </div>
@@ -179,7 +183,7 @@ function ReviewEditor({ roomId, challenge, host, locked, allSubmitted, submissio
   )
 }
 
-export function FindingDetails({ finding, author }: { finding: Finding; author?: string }) {
+export function FindingDetails({ finding, author, codeFix }: { finding: Finding; author?: string; codeFix?: boolean }) {
   return (
     <>
       <div className="mc-finding-meta">
@@ -190,7 +194,9 @@ export function FindingDetails({ finding, author }: { finding: Finding; author?:
       <h3>{finding.title}</h3>
       {author && <p className="mc-author">{author}</p>}
       <p className="mc-finding-text">{finding.explanation}</p>
-      {finding.suggestedFix && <p className="mc-finding-text"><strong>Suggested fix</strong> {finding.suggestedFix}</p>}
+      {finding.suggestedFix && (codeFix
+        ? <div className="mc-fix"><strong>Proposed fix</strong><pre><code>{finding.suggestedFix}</code></pre></div>
+        : <p className="mc-finding-text"><strong>Suggested fix</strong> {finding.suggestedFix}</p>)}
     </>
   )
 }

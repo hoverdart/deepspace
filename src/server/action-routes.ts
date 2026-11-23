@@ -36,6 +36,7 @@ import {
 } from 'deepspace/worker'
 import type { ActionResult, ActionTools, VerifyResult } from 'deepspace/worker'
 import { actions } from '../actions/index.js'
+import { requestAiOpinion } from './mergecourt-ai.js'
 import { integrations } from '../integrations.js'
 import type { AppContext, Env } from '../../worker.js'
 
@@ -67,7 +68,19 @@ export function registerActionRoutes(app: Hono<AppContext>, resolveAuth: Resolve
       return c.json({ success: false, error: 'Send a JSON object.' }, 400)
     }
     const tools = createActionTools(c.env, auth.userId, callerJwt)
-    const result = await action({ userId: auth.userId, params: params as Record<string, unknown>, tools, env: c.env, callerJwt })
+    const input = params as Record<string, unknown>
+    const result = await action({ userId: auth.userId, params: input, tools, env: c.env, callerJwt })
+    if (
+      (name === 'submitReview' || name === 'advanceGame' || name === 'revealRoom')
+      && result.success && (result.data as { startJury?: boolean })?.startJury && c.env.OWNER_USER_ID
+    ) {
+      // The serialized room transition verifies the host's billing eligibility.
+      // A guest may finish the review without requiring the host to stay online.
+      c.executionCtx.waitUntil(requestAiOpinion({
+        userId: c.env.OWNER_USER_ID, params: { roomId: input.roomId },
+        tools: createActionTools(c.env, c.env.OWNER_USER_ID, callerJwt, 21_000), env: c.env, callerJwt,
+      }).catch(() => console.warn('MergeCourt game jury request interrupted')))
+    }
     return Response.json(result, {
       status: result.success ? 200 : result.status ?? 400,
       headers: { 'Cache-Control': 'no-store' },
@@ -75,7 +88,7 @@ export function registerActionRoutes(app: Hono<AppContext>, resolveAuth: Resolve
   })
 }
 
-function createActionTools(env: Env, userId: string, callerJwt: string): ActionTools {
+function createActionTools(env: Env, userId: string, callerJwt: string, integrationTimeoutMs = 15_000): ActionTools {
   const stub = env.RECORD_ROOMS.get(env.RECORD_ROOMS.idFromName(`app:${env.DEEPSPACE_APP_ID}`))
 
   // The DO returns ActionResult<unknown>; callers below supply the precise
@@ -133,7 +146,7 @@ function createActionTools(env: Env, userId: string, callerJwt: string): ActionT
       method: 'POST',
       headers,
       body: JSON.stringify(data ?? {}),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(integrationTimeoutMs),
     })
     const payload = (await res.json()) as Record<string, unknown>
     if (!res.ok || payload.success === false) {

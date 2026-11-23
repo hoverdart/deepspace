@@ -27,6 +27,7 @@ export type Session = {
   participants: Participant[]
   findings: Finding[]
   closedAt?: string
+  game?: GameState | null
 }
 export type Submission = { sessionId: string; reviewerId: string; submittedAt: string; collaborators: string[] }
 export type Vote = { sessionId: string; findingId: string; voterId: string; verdict: Verdict; collaborators: string[] }
@@ -47,4 +48,26 @@ export type AiReview = {
   model: string
   cards: AiCard[]
   collaborators: string[]
+}
+
+export const maxGamePlayers = 6
+export const maxProposals = 5
+export const introSeconds = 8
+export const votingSeconds = 24
+export const resultSeconds = 7
+
+export type JuryOpinion = { verdict: Verdict; reason: string; source: 'model' | 'reference' }
+export type GameOutcome = {
+  findingId: string
+  counts: Record<Verdict, number>
+  jury: JuryOpinion
+  accepted: boolean
+}
+export type GameState = {
+  modelJury: boolean
+  reviewStartsAt?: number
+  reviewEndsAt?: number
+  proposalIds?: string[]
+  round?: { index: number; votingEndsAt: number; showUntil?: number }
+  outcomes: GameOutcome[]
 }

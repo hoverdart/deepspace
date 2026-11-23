@@ -6,9 +6,9 @@ import { Wordmark } from '../mergecourt/brand'
 import { seo } from '../seo'
 
 const steps = [
-  { title: 'Review in private', copy: 'Read the same pull request. File and lock your own findings.', icon: LockKeyhole },
-  { title: 'Reveal the findings', copy: 'See both reviews and compare what each of you caught.', icon: ScanLine },
-  { title: 'Cast your verdict', copy: 'Vote on each finding and see where your judgments agree.', icon: Vote },
+  { title: 'Review in private', copy: 'Race the clock to find bugs and propose fixes.', icon: LockKeyhole },
+  { title: 'Take the floor', copy: 'Each proposal gets its own round and a highlighted code snippet.', icon: ScanLine },
+  { title: 'Cast your verdict', copy: 'Cast your ballot, hear the jury’s reasoning, and see who wins.', icon: Vote },
 ]
 
 const subscribeToHydration = () => () => {}
@@ -37,8 +37,8 @@ export default function Landing() {
                 <span><em>Reach a verdict.</em></span>
               </h1>
               <p className="mc-hero-copy">
-                A two-person code review game. Inspect the same code in private,
-                reveal your findings together, and decide what holds up.
+                A timed code review game for two to six players. Find bugs,
+                propose fixes, and see what holds up when the room votes.
               </p>
               <div className="mc-actions">
                 <Link className="mc-button mc-primary" to="/rooms/new">Start review <ArrowRight aria-hidden="true" size={19} /></Link>

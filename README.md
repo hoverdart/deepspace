@@ -1,6 +1,6 @@
 # MergeCourt
 
-MergeCourt is a two-person code review game. Pick a short TypeScript challenge, invite a teammate, and file findings privately. After both reviews are locked, the host reveals the findings so both reviewers can vote and compare verdicts.
+MergeCourt is a timed code review game for two to six people. Choose from 18 challenges in seven languages, invite friends, and save proposed fixes in private. The game puts one proposal in the spotlight per round and reveals the jury’s ballot after voting. It ends with a scoreboard and a walkthrough of the original code.
 
 [Play MergeCourt](https://mergecourt-hoverdart.app.space) · [GitHub repository](https://github.com/hoverdart/deepspace)
 
@@ -12,15 +12,16 @@ Run `npm run validate` for TypeScript and unit tests and `npm run build` for the
 
 For the local admin, interrupted-reveal, and AI checks, set `MERGECOURT_TEST_ADMIN_JWT` to the app owner’s CLI token. Set both `MERGECOURT_TEST_AI_FIXTURE` and `DEEPSPACE_API_URL` to `http://127.0.0.1:5187` to route the paid integration boundary to the local fixture. Playwright starts the fixture. To verify a deployed release without sending a paid request, set `MERGECOURT_TEST_URL` to its URL and run `npx playwright test -c tests/playwright.config.ts`.
 
-The reference guide is Base64-encoded UTF-8 JSON in the DeepSpace secret `MERGECOURT_REFERENCE_GUIDE`. The mapping is keyed by challenge ID and each value is an array of objects with `title` and `explanation`. Keep the local source file out of Git. MergeCourt retrieves the guide from a Worker action after the host closes the room. [DeepSpace secrets](https://docs.deep.space/guides/secrets)
+Timed games read their walkthroughs from `src/server/challenge-guides.ts` after the final round. The original two-player rooms can read a Base64-encoded UTF-8 JSON guide from the DeepSpace secret `MERGECOURT_REFERENCE_GUIDE`. The mapping is keyed by challenge ID and each value is an array of objects with `title` and `explanation`. The Worker action serves both guides only to room members after the room closes. [DeepSpace secrets](https://docs.deep.space/guides/secrets)
 
 ## Review the implementation
 
 - The [collection rules](src/schemas/mergecourt-schema.ts) deny direct client access to private drafts, staged copies, and AI claims, including app admin access. The action that reads a private review filters on both room and verified author.
 - The [room workflow](src/server/mergecourt-workflow.ts) serializes mutations through the app’s RecordRoom. Trace `revealRoom` from the authenticated action to staged copies and the single shared session update. RecordRoom sends that update to both reviewers, and the room route renders it from a `useQuery` subscription.
-- The [AI action](src/server/mergecourt-ai.ts) checks the app owner and room host, then claims the room’s one paid request before calling the provider. The core review stays usable if that request fails.
+- The [timed game](src/server/mergecourt-game.ts) keeps ballots private and publishes the current proposal, jury vote, and aggregate once per round. A point requires a majority and at least one reviewer voting Valid.
+- The [AI action](src/server/mergecourt-ai.ts) batches the jury’s votes into one paid request per owner-hosted game. Rooms hosted by other players and rounds without a usable model result use the labeled reference jury.
 
-## Submission draft
+## Original MVP submission draft
 
 I built MergeCourt for two developers to review the same pull request. Each person commits their findings in private, then both can see and vote on what the other person found. There are two short TypeScript challenges and a reference guide after the room closes.
 

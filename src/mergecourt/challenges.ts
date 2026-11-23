@@ -1,8 +1,28 @@
-export const challenges = [
+import { extraChallenges } from './challenge-library'
+
+export const difficulties = ['Easy', 'Medium', 'Hard', 'Extreme'] as const
+export type Difficulty = (typeof difficulties)[number]
+export type Language = 'TypeScript' | 'JavaScript' | 'Python' | 'Go' | 'Rust' | 'SQL' | 'Java'
+export type Challenge = {
+  id: string
+  title: string
+  file: string
+  description: string
+  difficulty: Difficulty
+  language: Language
+  hint: string
+  source: string
+}
+
+export const reviewSeconds: Record<Difficulty, number> = { Easy: 90, Medium: 120, Hard: 180, Extreme: 240 }
+
+export const challenges: Challenge[] = [
   {
     id: 'reservation-race',
     title: 'Reservation race',
     file: 'reserve-seats.ts',
+    language: 'TypeScript', difficulty: 'Hard',
+    hint: 'Walk through two overlapping requests for the last remaining seat.',
     description: 'A pull request adds seat reservations for events. Review the change before it ships.',
     source: `type Event = { id: string; seatsLeft: number }
 type Reservation = { id: string; eventId: string; userId: string; seats: number }
@@ -33,6 +53,8 @@ export async function reserveSeats(
     id: 'balance-transfer',
     title: 'Account balance transfer',
     file: 'transfer-credits.ts',
+    language: 'TypeScript', difficulty: 'Medium',
+    hint: 'Imagine the first save works but the second save throws.',
     description: 'A pull request moves credits between two demo accounts. Review what happens as each balance is saved.',
     source: `type Account = { id: string; credits: number }
 
@@ -62,9 +84,8 @@ export async function transferCredits(
   await store.recordTransfer(fromId, toId, amount)
 }`,
   },
-] as const
-
-export type Challenge = (typeof challenges)[number]
+  ...extraChallenges,
+]
 
 export function getChallenge(id: string): Challenge | undefined {
   return challenges.find((challenge) => challenge.id === id)
