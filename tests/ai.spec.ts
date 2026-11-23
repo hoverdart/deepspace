@@ -44,9 +44,10 @@ for (const providerFails of [false, true]) {
     const opinion = page.getByRole('region', { name: 'AI second opinion' })
     await expect(opinion).toBeVisible()
     if (providerFails) {
-      await expect(opinion.getByText('The AI opinion was unavailable for this room.')).toBeVisible()
+      await expect(opinion.getByText('The AI request ended without a usable review.', { exact: false })).toBeVisible()
     } else {
       await expect(opinion.getByRole('heading', { name: 'Consider concurrent writes' })).toBeVisible()
+      await expect(opinion.getByRole('heading', { name: 'Check the account identifiers' })).toBeVisible()
     }
     await owner('closeRoom')
     await page.reload()

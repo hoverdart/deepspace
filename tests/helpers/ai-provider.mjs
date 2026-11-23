@@ -25,9 +25,12 @@ createServer(async (request, response) => {
     if (key.includes('fail-provider')) return send(402, { success: false, error: 'insufficient_credits' })
     return send(200, {
       success: true,
-      data: { choices: [{ message: { content: JSON.stringify({
-        cards: [{ title: 'Consider concurrent writes', analysis: 'A lock or conditional update can make the check atomic.' }],
-      }) } }] },
+      data: { choices: [{ message: { content: [
+        '## Consider concurrent writes',
+        'A lock or conditional update can make the check atomic. '.repeat(12),
+        '## Check the account identifiers',
+        'Reject a transfer to the same account.',
+      ].join('\n\n') } }] },
     })
   } catch {
     return send(400, { success: false, error: 'bad_test_request' })

@@ -42,7 +42,7 @@ export function AiOpinion({ roomId, closed, host }: { roomId: string; closed: bo
           <li key={`${card.title}-${index}`}><h3>{card.title}</h3><p>{card.analysis}</p></li>
         ))}</ul>
       )}
-      {opinion?.status === 'FAILED' && <p role="status">The AI opinion was unavailable for this room.</p>}
+      {opinion?.status === 'FAILED' && <p role="status">The AI request ended without a usable review. Each room allows one request.</p>}
       {startedAt && (!opinion || opinion.status === 'PENDING') && (
         <p role="status">{expired ? 'The AI opinion was unavailable for this room.' : 'Waiting for the AI opinion…'}</p>
       )}

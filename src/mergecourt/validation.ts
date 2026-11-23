@@ -15,7 +15,9 @@ export const findingSchema = z.object({
   suggestedFix: z.string().trim().max(findingLimits.suggestedFix).default(''),
 }).refine(({ lineStart, lineEnd }) => lineStart <= lineEnd, 'The end line must follow the start line.')
 
+export const aiCardLimits = { title: 80, analysis: 420 } as const
+
 export const aiCardsSchema = z.array(z.object({
-  title: z.string().trim().min(1).max(80),
-  analysis: z.string().trim().min(1).max(420),
+  title: z.string().trim().min(1).max(aiCardLimits.title),
+  analysis: z.string().trim().min(1).max(aiCardLimits.analysis),
 })).min(1).max(4)
