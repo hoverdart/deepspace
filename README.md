@@ -21,12 +21,14 @@ Timed games read their walkthroughs from `src/server/challenge-guides.ts` after 
 - The [timed game](src/server/mergecourt-game.ts) keeps ballots private and publishes the current proposal, jury vote, and aggregate once per round. A point requires a majority and at least one reviewer voting Valid.
 - The [AI action](src/server/mergecourt-ai.ts) batches the jury’s votes into one paid request per owner-hosted game. Rooms hosted by other players and rounds without a usable model result use the labeled reference jury.
 
-## Original MVP submission draft
+## Submission writeup
 
-I built MergeCourt for two developers to review the same pull request. Each person commits their findings in private, then both can see and vote on what the other person found. There are two short TypeScript challenges and a reference guide after the room closes.
+I built MergeCourt to make code review feel like a game you can play with friends. Two to six players pick from 18 challenges across seven languages and four difficulty levels. After a countdown, everyone reviews the same snippet and saves fixes in private. The game highlights one proposal at a time, collects votes, and then shows the jury’s vote and reasoning. The final screen shows who won and walks through the original code.
 
-The main tradeoff was keeping the game to two people and authored code so I could focus on making the shared reveal work correctly. DeepSpace Auth handles sign-in, RecordRoom persists and broadcasts authorized data, PresenceRoom shows who’s online, and server actions enforce the review phases. An optional AI opinion is available after reveal in rooms I host as the app owner.
+DeepSpace Auth handles sign-in, PresenceRoom shows who’s online, and RecordRoom stores and syncs the game. Server actions use the signed-in player’s room membership and the current phase to control what they can see and change. The main tradeoff was using authored challenges so I could focus on private submissions and reliable timed reveals. Owner-hosted games use one batched AI request through DeepSpace. The labeled reference jury covers other rooms and missing model votes.
 
-Codex implemented the app and ran the verification, with Claude CLI reviews of the plan, room permissions, state transitions, and AI request boundary. The automated checks covered the two-user workflow and rejected access attempts. A single live AI request produced three cards that stayed visible after the room closed and refreshed.
+I directed the build and the game design. Codex implemented the app and ran the checks, and Claude CLI reviewed the plan, permissions, state transitions, AI request boundary, and challenge explanations. The checks passed 23 unit tests and 19 local browser and API tests. A live three-player game verified the countdown, private voting, reload recovery, and final scores. A separate live owner-hosted game produced a real AI vote that stayed visible in the proposal history after reload.
 
-Before submission, add your own verification details after stepping through the deployed flow in two signed-in sessions, checking a rejected request and the Worker logs, and tracing a reveal from the action to the browser.
+**My own verification**
+
+[Replace this line with what you personally checked on the live app.]
