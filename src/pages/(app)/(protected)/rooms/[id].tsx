@@ -88,7 +88,7 @@ function JoinedRoom({ roomId, session, userId }: { roomId: string; session: Sess
           <h1>{challenge.title}</h1>
           <p>{challenge.description}</p>
         </div>
-        <span className="mc-phase">{labels[session.status]}</span>
+        <span key={session.status} className="mc-phase">{labels[session.status]}</span>
       </div>
 
       <section className="mc-roster" aria-label="Participants">

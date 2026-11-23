@@ -26,6 +26,26 @@ test.describe('Smoke tests', () => {
     expect(await page.locator('head link[rel="canonical"]').count()).toBe(1)
   })
 
+  test('landing plays the headline and evidence in order and respects reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    await expect(page.getByTestId('static-landing')).toBeVisible()
+
+    const stages = page.locator('.mc-hero h1 > span, .mc-preview, .mc-preview-finding')
+    const delays = await stages.evaluateAll((elements) =>
+      elements.map((element) => parseFloat(getComputedStyle(element).animationDelay)),
+    )
+    expect(delays).toHaveLength(5)
+    expect(delays.every((delay, index) => index === 0 || delay > delays[index - 1])).toBe(true)
+    await expect(stages.first()).toHaveCSS('animation-name', 'mc-arrive')
+
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const reduced = await stages.evaluateAll((elements) =>
+      elements.map((element) => getComputedStyle(element).animationName),
+    )
+    expect(reduced).toEqual(['none', 'none', 'none', 'none', 'none'])
+  })
+
   test('static contract: landing fires no auth request, opens no websocket', async ({ page }) => {
     const offenders: string[] = []
     page.on('request', (req) => {

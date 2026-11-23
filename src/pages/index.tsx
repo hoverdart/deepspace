@@ -31,7 +31,11 @@ export default function Landing() {
         <main className="mc-container">
           <section className="mc-hero">
             <div>
-              <h1>Find the bug.<br />Defend the finding.<br /><em>Reach a verdict.</em></h1>
+              <h1>
+                <span>Find the bug.</span>{' '}
+                <span>Defend the finding.</span>{' '}
+                <span><em>Reach a verdict.</em></span>
+              </h1>
               <p className="mc-hero-copy">
                 A two-person code review game. Inspect the same code in private,
                 reveal your findings together, and decide what holds up.
