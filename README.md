@@ -29,6 +29,3 @@ DeepSpace Auth handles sign-in, PresenceRoom shows who’s online, and RecordRoo
 
 I directed the build and the game design. Codex implemented the app and ran the checks, and Claude CLI reviewed the plan, permissions, state transitions, AI request boundary, and challenge explanations. The checks passed 23 unit tests and 19 local browser and API tests. A live three-player game verified the countdown, private voting, reload recovery, and final scores. A separate live owner-hosted game produced a real AI vote that stayed visible in the proposal history after reload.
 
-**My own verification**
-
-[Replace this line with what you personally checked on the live app.]
